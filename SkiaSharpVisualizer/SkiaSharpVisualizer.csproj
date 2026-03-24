@@ -3,8 +3,8 @@
 		<TargetFramework>net8.0-windows</TargetFramework>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
-		<AssemblyVersion>1.0.3</AssemblyVersion>
-		<FileVersion>1.0.3</FileVersion>
+		<AssemblyVersion>1.26.1.1</AssemblyVersion>
+		<FileVersion>1.26.1.1</FileVersion>
 		<Title>SkiaSharp Visualizer</Title>
 		<Company>MapLarge</Company>
 		<PackageProjectUrl>https://github.com/MapLarge/SkiaSharpVisualizer</PackageProjectUrl>
@@ -19,9 +19,9 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Microsoft.VisualStudio.Extensibility.Sdk" Version="17.9.2092" />
-		<PackageReference Include="Microsoft.VisualStudio.Extensibility.Build" Version="17.9.2092" />
-		<PackageReference Include="SkiaSharp" Version="2.88.6" />
+		<PackageReference Include="Microsoft.VisualStudio.Extensibility.Sdk" Version="17.14.40608" />
+		<PackageReference Include="Microsoft.VisualStudio.Extensibility.Build" Version="17.14.40608" />
+		<PackageReference Include="SkiaSharp" Version="3.119.2" />
 	</ItemGroup>
 
 	<ItemGroup>

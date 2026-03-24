@@ -20,26 +20,26 @@ namespace SkiaSharpVisualizer {
 		/// Height of the image.
 		/// </summary>
 		public int height;
+		/// <summary>
+		/// Optional status message shown when the visualizer cannot safely materialize the image.
+		/// </summary>
+		public string message;
 
 	}
 
 	public class SkiaSharpVisualizerSource : VisualizerObjectSource {
 
 		public override void GetData(object target, Stream outgoingData) {
-			//Get raw bitmap bytes and serialize those.
-			//If something terrible happens, return null.
 			SkiaSharpVisualizerDataSource ds;
 			switch (target) {
 				case SkiaSharp.SKBitmap bitmap:
 					ds = GetBitmapDataSource(bitmap);
 					break;
 				case SkiaSharp.SKImage image:
-					ds = GetBitmapDataSource(image);
+					ds = GetImageDataSource(image);
 					break;
 				case SkiaSharp.SKSurface surface:
-					using (var snapshot = surface.Snapshot()) {
-						ds = GetBitmapDataSource(snapshot);
-					}
+					ds = GetSurfaceDataSource(surface);
 					break;
 				default:
 					throw new NotImplementedException(target.GetType().FullName);
@@ -54,11 +54,41 @@ namespace SkiaSharpVisualizer {
 				height = bitmap.Height,
 			};
 		}
-		private SkiaSharpVisualizerDataSource GetBitmapDataSource(SkiaSharp.SKImage image) {
+
+		private SkiaSharpVisualizerDataSource GetImageDataSource(SkiaSharp.SKImage image) {
+			if (image.IsTextureBacked) {
+				return CreateUnsupportedDataSource(
+					width: image.Width,
+					height: image.Height,
+					message: "GPU-backed SKImage instances are not supported by this visualizer because reading them during debugging can crash the debuggee process.");
+			}
+
 			return new SkiaSharpVisualizerDataSource {
 				pngBase64 = Convert.ToBase64String(SavePngBytes(image)),
 				width = image.Width,
 				height = image.Height,
+			};
+		}
+
+		private SkiaSharpVisualizerDataSource GetSurfaceDataSource(SkiaSharp.SKSurface surface) {
+			if (surface.Context != null) {
+				return CreateUnsupportedDataSource(
+					width: 0,
+					height: 0,
+					message: "GPU-backed SKSurface instances are not supported by this visualizer because taking a snapshot can crash the debuggee process.");
+			}
+
+			using (var snapshot = surface.Snapshot()) {
+				return GetImageDataSource(snapshot);
+			}
+		}
+
+		private static SkiaSharpVisualizerDataSource CreateUnsupportedDataSource(int width, int height, string message) {
+			return new SkiaSharpVisualizerDataSource {
+				pngBase64 = string.Empty,
+				width = width,
+				height = height,
+				message = message,
 			};
 		}
 

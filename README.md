@@ -1,8 +1,17 @@
 # SkiaSharpVisualizer
-A Visual Studio debugger extension for viewing [SkiaSharp](https://github.com/mono/SkiaSharp) bitmaps and images.
+A Visual Studio debugger extension for viewing [SkiaSharp](https://github.com/mono/SkiaSharp) bitmaps, images and surfaces.
 
 ## Building
-Designed for Visual Studio 2022, simply update to at least 17.9 and install the "Visual Studio extension development" workload. There are no external requirements beyond the SkiaSharp nuget package and Visual Studio SDK. After building the solution, run the generated .vsix file to install.
+Designed for Visual Studio 2026 and recent Visual Studio 2022 builds from 17.14 onward. Install the "Visual Studio extension development" workload. 
+After building the solution, run the generated .vsix file to install.
+
+## Architecture
+The solution consists of two projects:
+
+- `SkiaSharpVisualizer` is the VisualStudio.Extensibility VSIX host that runs the out-of-process extension UI and debugger visualizer provider.
+- `SkiaSharpVisualizerSource` is the `VisualizerObjectSource` payload assembly that Visual Studio uses to serialize SkiaSharp objects from the debuggee side.
+
+That split is required by the debugger visualizer architecture. Merging them into one project would couple the object-source payload to the VSIX host runtime and make packaging and loading more fragile.
 
 ## How to Use
 The extension adds a new UI item to view SkiaSharp SKBitmap, SKImage, and SKSurface objects.
@@ -19,6 +28,9 @@ The bordered option will add an indicator border around the image so you can fig
 
 The "Open in External Viewer" button will launch the default viewer for PNG files.
 ![image](https://github.com/MapLarge/SkiaSharpVisualizer/assets/38544371/327bf856-cace-4d09-9c7c-7c5d5b31c5b3)
+
+## Notes
+Accessing GPU memory from debugger could crash Visual Studio so GPU-backed instances are reported as unsupported by the viewer.
 
 ## Contributing
 PRs and suggestions are welcome, or you can fork this project and make your own enhancements.

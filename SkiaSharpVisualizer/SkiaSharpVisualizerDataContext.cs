@@ -19,7 +19,7 @@ namespace SkiaSharpVisualizer {
 
 		public SkiaSharpVisualizerDataContext(VisualizerTarget visualizerTarget) {
 			this.visualizerTarget = visualizerTarget;
-			visualizerTarget.StateChanged += this.OnStateChangedAsync;
+			visualizerTarget.Changed += this.OnChangedAsync;
 
 			this.OpenExternalCommand = new OpenExternalCommand(this);
 		}
@@ -31,12 +31,15 @@ namespace SkiaSharpVisualizer {
 				SetProperty(ref this._model, value);
 				RaiseNotifyPropertyChangedEvent(nameof(Width));
 				RaiseNotifyPropertyChangedEvent(nameof(Height));
+				RaiseNotifyPropertyChangedEvent(nameof(StatusMessage));
 			}
 		}
 		[DataMember]
 		public int Width => Model?.width ?? 0;
 		[DataMember]
 		public int Height => Model?.height ?? 0;
+		[DataMember]
+		public string StatusMessage => Model?.message ?? string.Empty;
 
 		private string? _filePath;
 		[DataMember]
@@ -72,8 +75,8 @@ namespace SkiaSharpVisualizer {
 		public int BorderThickness => _isBordered ? 3 : 0;
 
 		private const int MAXFILEPATHS = 5;
-		private SortedDictionary<string, string> byteFilePaths = new();
-		private SortedDictionary<string, DateTimeOffset> byteLastAccess = new();
+		private Dictionary<string, string> byteFilePaths = new();
+		private Dictionary<string, DateTimeOffset> byteLastAccess = new();
 
 		[DataMember]
 		public IAsyncCommand OpenExternalCommand { get; }
@@ -94,7 +97,7 @@ namespace SkiaSharpVisualizer {
 			}
 		}
 
-		private async Task OnStateChangedAsync(object? sender, VisualizerTargetStateNotification args) {
+		private async Task OnChangedAsync(VisualizerTargetStateNotification args) {
 			var dataSource = await GetRequestAsync(args);
 			
 			CleanupUsedFilePaths();
@@ -102,21 +105,18 @@ namespace SkiaSharpVisualizer {
 			//No data.
 			var pngBase64 = dataSource?.pngBase64;
 			if (string.IsNullOrWhiteSpace(pngBase64)) {
+				this.Model = dataSource;
 				ResetBindings();
 				return;
 			}
 
 			var pngBytes = System.Convert.FromBase64String(pngBase64);
-			try {
-				//Is this the same image we've shown already?
-				if (byteFilePaths.TryGetValue(pngBase64, out var fp) && System.IO.File.Exists(fp) && System.IO.File.ReadAllBytes(fp).SequenceEqual(pngBytes)) {
-					this.byteLastAccess[pngBase64] = DateTimeOffset.Now;
-					this.FilePath = fp;
-					this.Model = dataSource;
-					return;
-				}
-			} catch {
-				//Ignore any lookup errors.
+			// The cache key is the payload itself, so a matching entry does not need a disk re-read.
+			if (byteFilePaths.TryGetValue(pngBase64, out var existingFilePath) && System.IO.File.Exists(existingFilePath)) {
+				this.byteLastAccess[pngBase64] = DateTimeOffset.Now;
+				this.FilePath = existingFilePath;
+				this.Model = dataSource;
+				return;
 			}
 
 			//Using a BitmapSource on the data context is not serializable cross-process, so we will write the png to a temp file since binding to a url works.
@@ -140,7 +140,7 @@ namespace SkiaSharpVisualizer {
 				return;
 			}
 
-			var oldestFile = byteLastAccess.First();
+			var oldestFile = byteLastAccess.MinBy(static kvp => kvp.Value);
 			if (!byteFilePaths.TryGetValue(oldestFile.Key, out var filePath)) {
 				//Shouldn't happen.
 				byteLastAccess.Remove(oldestFile.Key);
@@ -161,7 +161,6 @@ namespace SkiaSharpVisualizer {
 		}
 		private void ResetBindings() {
 			this.FilePath = null;
-			this.Model = null;
 		}
 		private void RemoveAllFiles() {
 			foreach (var kvp in byteFilePaths) {
@@ -181,7 +180,7 @@ namespace SkiaSharpVisualizer {
 		}
 
 		public void Dispose() {
-			visualizerTarget.StateChanged -= this.OnStateChangedAsync;
+			visualizerTarget.Changed -= this.OnChangedAsync;
 			this.visualizerTarget.Dispose();
 
 			this.ResetBindings();

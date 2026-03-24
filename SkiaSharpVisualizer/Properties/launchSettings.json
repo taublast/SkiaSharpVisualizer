@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "SkiaSharpVisualizer": {
+      "commandName": "Project",
+      "commandLineArgs": "/rootsuffix Exp"
+    }
+  }
+}
